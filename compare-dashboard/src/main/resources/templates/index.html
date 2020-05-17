@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Result Report</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/uikit@3.2.2/dist/css/uikit.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/echarts@4.7.0/dist/echarts.min.js"></script>
+    <!-- UIkit JS -->
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.2.2/dist/js/uikit.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/uikit@3.2.2/dist/js/uikit-icons.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+</head>
+<body >
+<nav class="uk-navbar-container uk-margin" uk-navbar>
+    <div class="uk-navbar-center">
+        <a class="uk-navbar-item uk-logo" href="#"> CompareApi Result Report</a>
+    </div>
+</nav>
+<div class="uk-container">
+<a class="uk-navbar-toggle" href="#modal-full" uk-search-icon uk-toggle>Search By ApplicationName</a>
+    <div id="modal-full" class="uk-modal-full uk-modal" uk-modal>
+    <div class="uk-modal-dialog uk-flex uk-flex-center uk-flex-middle" uk-height-viewport>
+        <button class="uk-modal-close-full" type="button" uk-close></button>
+        <div class="uk-search uk-search-large">
+            <input id="searchKey" class="uk-search-input uk-text-center" type="text" placeholder="按Enter开始检索" autofocus>
+        </div>
+    </div>
+    </div>
+</div>
+
+<div class="uk-container" >
+    <hr class="uk-divider-icon">
+    <div id="nowApplication"><h1>当前应用</h1></div>
+    <div id="order" style="width: 100%;height:400px;"></div>
+
+    <h3>当前应用参与比对详细情况</h3>
+    <div id="orderInfo" style="width: 100%"></div>
+    <hr class="uk-divider-icon">
+    <div id="timePointChat" style="width: 100%;height: 600px;"></div>
+</div>
+
+<div class="uk-container">
+    <hr class="uk-divider-icon">
+    <h1>异常接口</h1>
+    <div id="exceptionFunc" style="width: 100%;" ></div>
+
+    <h3>比对结果不一致检索样例</h3>
+    <div class="uk-overflow-auto">
+    <table class="uk-table uk-table-striped uk-table-hover">
+        <thead>
+        <tr>
+            <th>方法名称</th>
+            <th>源机器返回结果</th>
+            <th>目标机器返回结果</th>
+        </tr>
+        </thead>
+        <tbody id="table-conent">
+        </tbody>
+    </table>
+    </div>
+</div>
+
+
+<div class="uk-container" >
+    <hr class="uk-divider-icon">
+    <h1>全部应用</h1>
+    <div id="main" style="width: 100%;height:700px;"></div>
+</div>
+
+<div class="uk-container">
+    <hr class="uk-divider-icon">
+    <h1>Mango原生查询工具集</h1>
+        <fieldset class="uk-fieldset">
+            <legend class="uk-legend">键入你的Mango查询语句：</legend>
+            <div class="uk-margin">
+                <textarea id="mangoQueryData" class="uk-textarea" rows="5" placeholder="Mango Query...(Just support Find(*)❗)"></textarea>
+            </div>
+        </fieldset>
+        <button class="uk-button uk-button-secondary uk-align-right" onclick="queryMango()">Query</button>
+</div>
+<hr class="uk-divider-icon">
+<div class="uk-section uk-section-secondary">
+    <div class="uk-container">
+
+        <div class="uk-grid-large uk-flex-middle uk-grid" uk-grid="">
+            <div class="uk-width-expand@m uk-first-column">
+                <p class="uk-text-large">担心比对结果太庞杂？单击此处清空你应用的下的比对数据，开始一段新的历程吧！</p>
+            </div>
+            <div class="uk-width-auto@m">
+                <a id="js-modal-prompt" class="uk-button uk-button-danger" href="#">Clear</a>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+<div id="modal-container" class="uk-modal-container" uk-modal>
+    <div class="uk-modal-dialog uk-modal-body">
+        <button class="uk-modal-close-default" type="button" uk-close></button>
+        <h2 class="uk-modal-title">Tips</h2>
+        <p class="uk-text-danger uk-text-large">注意：数据实时检索自MangoDB，请勿频繁刷新，以免增加DB负载💥</p>
+    </div>
+</div>
+
+<div id="modal-overflow" uk-modal>
+    <div class="uk-modal-dialog">
+        <button class="uk-modal-close-default" type="button" uk-close></button>
+        <div class="uk-modal-header">
+            <h2 class="uk-modal-title">Result</h2>
+        </div>
+        <div id ="queryResult" class="uk-modal-body" uk-overflow-auto>
+        </div>
+
+        <div class="uk-modal-footer uk-text-right">
+            <button class="uk-button uk-button-default uk-modal-close" type="button">Cancel</button>
+            <button class="uk-button uk-button-primary" type="button">Ok</button>
+        </div>
+
+    </div>
+</div>
+<script type="text/javascript">
+    var applicationName = getQueryVariable('applicationName');
+    console.log("load applicationName:"+applicationName);
+    $('#searchKey').bind('keypress',function(event){
+        if(event.keyCode == "13") {
+            var application=$('#searchKey').val();
+            window.location.href = "http://"+window.location.host+"?applicationName=" + application
+        }
+    });
+
+
+    function getQueryVariable(variable) {
+        var query = window.location.search.substring(1);
+        var vars = query.split("&");
+        for (var i=0;i<vars.length;i++) {
+            var pair = vars[i].split("=");
+            if(pair[0] == variable){return pair[1];}
+        }
+        return "application";
+    }
+
+    UIkit.modal("#modal-container").show();
+    var orderChart = echarts.init(document.getElementById('order'));
+    // 显示标题，图例和空的坐标轴
+    orderChart.setOption({
+        title: {
+            text: '当前应用比对情况',
+            left: 'center'
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b} : {c} ({d}%)'
+        },
+        legend: {
+            left: 'center',
+            top: 'bottom',
+            data: ['Same', 'Different']
+        },
+        toolbox: {
+            feature: {
+                mark: {show: true},
+                restore: {show: true},
+                saveAsImage: {show: true}
+            }
+        },
+        series: [
+            {
+                type: 'pie',
+                color: ['#00dd94','#dd4a76'],
+                roseType: 'radius',
+                label: {
+                    show: false
+                },
+                emphasis: {
+                    label: {
+                        show: true
+                    }
+                },
+                data: []
+            }
+        ]
+    });
+
+    orderChart.showLoading();
+
+    var orderInfoChat = echarts.init(document.getElementById('orderInfo'));
+    orderInfoChat.setOption({
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {            // 坐标轴指示器，坐标轴触发有效
+                type: 'shadow'        // 默认为直线，可选为：'line' | 'shadow'
+            }
+        },
+        legend: {
+            data: ['Same', 'Different']
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: {
+            type: 'value'
+        },
+        yAxis: {
+            type: 'category',
+            data: ['123','3213']
+        },
+        series: [
+            {
+                name: 'Same',
+                type: 'bar',
+                stack: 'Times',
+                color:'#00dd94',
+                label: {
+                    show: true,
+                    position: 'insideRight'
+                },
+                data: [1,23]
+            },
+            {
+                name: 'Different',
+                type: 'bar',
+                stack: 'Times',
+                color:'#dd4a76',
+                label: {
+                    show: true,
+                    position: 'insideRight'
+                },
+                data: [1,23]
+            }
+
+        ]
+    });
+
+    orderInfoChat.showLoading();
+
+    var myChart = echarts.init(document.getElementById('main'));
+    // 显示标题，图例和空的坐标轴
+    myChart.setOption({
+        title: {
+            text: '各应用比对结果概况'
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {            // 坐标轴指示器，坐标轴触发有效
+                type: 'shadow'        // 默认为直线，可选为：'line' | 'shadow'
+            }
+        },
+        toolbox: {
+            feature: {
+                mark: {show: true},
+                restore: {show: true},
+                saveAsImage: {show: true}
+            }
+        },
+        legend: {
+            data: ['Same', 'Different']
+        },
+        grid: {
+            left: '3%',
+            right: '4%',
+            bottom: '3%',
+            containLabel: true
+        },
+        xAxis: [
+            {
+                type: 'category',
+                data: ['orderws','','','','','','','','']
+            }
+        ],
+        yAxis: [
+            {
+                type: 'value'
+            }
+        ],
+        series: [
+            {
+                name: 'Same',
+                type: 'bar',
+                stack: 'Result',
+                color: ['#00dd94'],
+                data: [17994,'','','','','','','','']
+
+            },
+            {
+                name: 'Different',
+                type: 'bar',
+                stack: 'Result',
+                color: ['#dd0035'],
+                data: [1235,'','','','','','','','']
+            }
+        ]
+    });
+
+    myChart.showLoading();
+
+
+    var exceptionFunc = echarts.init(document.getElementById('exceptionFunc'));
+    // 显示标题，图例和空的坐标轴
+    exceptionFunc.setOption({
+        dataset: {
+            source: []
+        },
+        tooltip: {
+            trigger: 'item',
+            formatter: '{a} <br/>{b} : {c}'
+        },
+        grid: {containLabel: true},
+        xAxis: {name: 'Different Times'},
+        yAxis: {type: 'category'},
+        visualMap: {
+            orient: 'horizontal',
+            left: 'center',
+            max:1000,
+            min:1,
+            text: ['High Different Times', 'Low Different Times'],
+            dimension: 1,
+            inRange: {
+                color: ['#d7da5d', '#e12b31']
+            }
+        },
+        series: [
+            {
+                type: 'bar',
+                encode: {
+                    x: 'amount',
+                    y: 'product'
+                }
+            }
+        ]
+    });
+    exceptionFunc.showLoading();
+
+    var timePointChat = echarts.init(document.getElementById('timePointChat'));
+    timePointChat.setOption({
+        title: {
+            text: '参与比对具体情况',
+            subtext: '时间/成功比对次数',
+            left: 'center',
+            align: 'right'
+        },
+        grid: {
+            bottom: 80
+        },
+        toolbox: {
+            feature: {
+                dataZoom: {
+                    yAxisIndex: 'none'
+                },
+                restore: {},
+                saveAsImage: {}
+            }
+        },
+        tooltip: {
+            trigger: 'axis',
+            axisPointer: {
+                type: 'cross',
+                animation: false,
+                label: {
+                    backgroundColor: '#505765'
+                }
+            }
+        },
+        legend: {
+            data: ['Same', 'Different'],
+            left: 10
+        },
+        dataZoom: [
+            {
+                show: true,
+                realtime: true,
+                start: 65,
+                end: 85
+            },
+            {
+                type: 'inside',
+                realtime: true,
+                start: 65,
+                end: 85
+            }
+        ],
+        xAxis: [
+            {
+                type: 'category',
+                boundaryGap: false,
+                axisLine: {onZero: false},
+                data: [].map(function (str) {
+                    return str.replace(' ', '\n');
+                })
+            }
+        ],
+        yAxis: [
+            {
+                name: 'Same',
+                type: 'value',
+                max: 200
+            },
+            {
+                name: 'Different',
+                nameLocation: 'start',
+                max: 400,
+                type: 'value',
+                inverse: true
+            }
+        ],
+        series: [
+            {
+                name: 'Same',
+                type: 'line',
+                animation: false,
+                areaStyle: {},
+                lineStyle: {
+                    width: 1
+                },
+                color:'#00dd94',
+
+                data: []
+            },
+            {
+                name: 'Different',
+                type: 'line',
+                yAxisIndex: 1,
+                animation: false,
+                areaStyle: {},
+                lineStyle: {
+                    width: 1
+                },
+                color:"#dd0035",
+                data: []
+            }
+        ]
+    });
+    timePointChat.showLoading();
+
+    function loadRes(applicationName){
+        $.ajax({
+            type : "get",
+            url : "/report/queryExpFuncCount"+ "?applicationName="+applicationName,
+            contentType: 'application/json',
+            success:function(data){
+                exceptionFunc.hideLoading();
+                var exceptionFuncTimes = 0;
+                var dataList = data;
+                var sourceList = [ ['product','Different Times']];
+                for(var i=0;i<dataList.length;i++) {
+                    var newList  = [];
+                    newList.push(dataList[i]["name"]);
+                    newList.push(dataList[i]["value"]);
+                    exceptionFuncTimes+=1;
+                    sourceList.push(newList);
+                }
+                console.log(sourceList);
+                exceptionFunc.setOption({
+                    dataset: {
+                        source: sourceList
+                    }
+                });
+                exceptionFunc.resize({height:exceptionFuncTimes*50 +100 })
+            },
+            error:function(data){
+                console.log(data)
+            }
+        });
+        var innerHTML="";
+        $.ajax({
+            type : "get",
+            url : "/report/queryExpFuncLimit"+ "?applicationName="+applicationName,
+            contentType: 'application/json',
+            success:function(data){
+                if(data.length === 0)
+                    return;
+                for (var i = 0;i<data.length;i++){
+                    innerHTML += "<tr>" +
+                        "<td>" + data[i]['name'] + "</td>" +
+                        "<td>" +  data[i]['sourceStr'] + "</td>" +
+                        "<td>" +  data[i]['copyStr'] + "</td>" +
+                        "</tr>";
+                }
+                $("#table-conent").html(innerHTML);
+            },
+            error:function(data){
+                console.log(data)
+            }
+        });
+
+        $.ajax({
+            type : "get",
+            url : "/report/queryAllFuc" + "?applicationName="+applicationName,
+            contentType: 'application/json',
+            success:function(data){
+                orderInfoChat.hideLoading();
+                orderInfoChat.setOption({
+                    yAxis:{
+                        data:data['name']
+                    },
+                    series: [{
+                        name: 'Same',
+                        data: data['same']
+                    },{
+                        name: 'Different',
+                        data: data['diff']
+                    }
+                    ]
+                });
+                var dataList = data['name'];
+                orderInfoChat.resize({height:dataList.length *50 +100 });
+            },
+            error:function(data){
+                console.log("error");
+                console.log(data)
+            }
+        });
+
+        $.ajax({
+            type : "get",
+            url : "/report/queryApplication" + "?applicationName="+applicationName,
+            contentType: 'application/json',
+            success:function(data){
+                orderChart.hideLoading();
+                orderChart.setOption({
+                    title:{
+                        subtext:applicationName
+                    },
+                    series: [{
+                        data: data
+                    }]
+                });
+                $('#nowApplication').html("<h1>" + applicationName +" 比对结果" + "</h1>");
+            },
+            error:function(data){
+                console.log("error");
+                console.log(data)
+            }
+        });
+
+        // Time
+        $.ajax({
+            type : "get",
+            url : "/report/queryTimeApp" + "?applicationName="+applicationName,
+            contentType: 'application/json',
+            success:function(data){
+                timePointChat.hideLoading();
+                timePointChat.setOption({
+                    xAxis: [
+                        {
+                            type: 'category',
+                            boundaryGap: false,
+                            axisLine: {onZero: false},
+                            data: data['dateList'].map(function (str) {
+                                return str.replace(' ', '\n');
+                            })
+                        }
+                    ],
+                    yAxis:[{
+                        name: 'Same',
+                        max:data['maxSame']*1.3
+                    },{
+                        name: 'Different',
+                        max:data['maxDiff']*3
+                    }],
+                    series: [{
+                        name: 'Same',
+                        data: data['sameList']
+                    },{
+                        name: 'Different',
+                        data: data['diffList']
+                    }
+                    ]
+                });
+                $('#nowApplication').html("<h1>" + applicationName +" 比对结果" + "</h1>");
+            },
+            error:function(data){
+                console.log("error");
+                console.log(data)
+            }
+        });
+    }
+
+    loadRes(applicationName);
+
+    $.ajax({
+        type : "get",
+        url : "/report/queryAll",
+        contentType: 'application/json',
+        success:function(data){
+            myChart.hideLoading();
+            var dataList = data;
+            var sameList = [];
+            var diffList = [];
+            var xAxisList= [];
+            console.log(dataList)
+
+            for(var i=0;i<dataList.length;i++) {
+                console.log(dataList[i])
+                for(var key in dataList[i]) {
+                    xAxisList.push(key);
+                    var newList = dataList[i][key];
+                    console.log(newList)
+
+                    for (var j = 0; j < newList.length; j++) {
+                        console.log(newList[j])
+                        if ("Same" === newList[j]["name"])
+                            sameList.push(newList[j]['value']);
+                        if ("Different" === newList[j]["name"])
+                            diffList.push(newList[j]['value'])
+                    }
+                }
+
+            }
+            myChart.setOption({
+                xAxis: [{
+                    type: 'category',
+                    data:xAxisList
+                }
+                ],
+                series:[{
+                    name: 'Same',
+                    data: sameList
+                }, {
+                    name: 'Different',
+                    data: diffList
+                }
+                ]
+            });
+
+        },
+        error:function(data){
+            console.log(data)
+        }
+    });
+
+    function queryMango() {
+        console.log($('#mangoQueryData').val());
+        $.ajax({
+            type : "post",
+            url : "/report/queryString",
+            data: $('#mangoQueryData').val(),
+            dataType: "json",
+            contentType: 'application/json',
+            success:function(data){
+                $("#queryResult").html("<p>" + JSON.stringify(data) + "</p>");
+                UIkit.modal("#modal-overflow").show();
+            },
+            error:function(data){
+                console.log(data)
+            }
+        });
+        return false;
+    }
+
+    UIkit.util.on('#js-modal-prompt', 'click', function (e) {
+        e.preventDefault();
+        e.target.blur();
+        UIkit.modal.prompt('Input Application Name:', 'Your Application Name').then(function (name) {
+            if (name == null || ''=== name)
+                return;
+            console.log('delApplication:', name);
+            $.ajax({
+                type : "delete",
+                url : "/service/delApplication?applicationName=" + name,
+                contentType: 'application/json',
+                success:function(data){
+                    UIkit.notification({message: '【'+name +'】对应的比对数据已清空！', status: 'success',timeout: 5000});
+                },
+                error:function(data){
+                    UIkit.notification({message: '处理【'+name +'】异常！', status: 'danger',timeout: 5000});
+                    console.log(data)
+                }
+            });
+        });
+    });
+
+
+
+</script>
+
+</body>
+</html>
