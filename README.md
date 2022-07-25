@@ -62,7 +62,7 @@ java -jar compare-dashboard.jar
 ### Depends on
 Spring Boot 1.4.7(you can change to your version)
 
-Alibaba FastJSON 1.2.56
+Alibaba FastJSON ~~1.2.56~~ 1.2.83
 
 Apache HttpClient
 
